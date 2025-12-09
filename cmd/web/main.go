@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"northstar/config"
 	"northstar/nats"
+	"northstar/orisun"
 	"northstar/router"
 	"os"
 	"os/signal"
@@ -57,7 +58,12 @@ func run(ctx context.Context) error {
 	sessionStore.Options.Secure = false
 	sessionStore.Options.SameSite = http.SameSiteLaxMode
 
-	ns, err := nats.SetupNATS(ctx)
+	ns, js, err := nats.SetupNATS(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = orisun.SetupOrisun(ctx, js)
 	if err != nil {
 		return err
 	}

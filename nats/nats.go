@@ -3,6 +3,8 @@ package nats
 import (
 	"context"
 	"fmt"
+	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 	"log/slog"
 	"net"
 	"os"
@@ -13,10 +15,10 @@ import (
 	natsserver "github.com/nats-io/nats-server/v2/server"
 )
 
-func SetupNATS(ctx context.Context) (*embeddednats.Server, error) {
+func SetupNATS(ctx context.Context) (*embeddednats.Server, jetstream.JetStream, error) {
 	natsPort, err := getFreeNatsPort()
 	if err != nil {
-		return nil, fmt.Errorf("error obtaining NATS port: %w", err)
+		return nil, nil, fmt.Errorf("error obtaining NATS port: %w", err)
 	}
 
 	ns, err := embeddednats.New(ctx, embeddednats.WithNATSServerOptions(&natsserver.Options{
@@ -27,13 +29,24 @@ func SetupNATS(ctx context.Context) (*embeddednats.Server, error) {
 	}))
 
 	if err != nil {
-		return nil, fmt.Errorf("error creating embedded nats server: %w", err)
+		return nil, nil, fmt.Errorf("error creating embedded nats server: %w", err)
 	}
 
 	ns.WaitForServer()
 	slog.Info("NATS started", "port", natsPort)
 
-	return ns, nil
+	// Connect to NATS
+	nc, err := nats.Connect("", nats.InProcessServer(ns.NatsServer))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to connect to NATS: %v", err)
+	}
+
+	// Create JetStream
+	js, err := jetstream.New(nc)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create JetStream context: %v", err)
+	}
+	return ns, js, nil
 }
 
 func getFreeNatsPort() (int, error) {

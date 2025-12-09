@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -59,7 +60,7 @@ func (s *TodoService) GetSessionMVC(w http.ResponseWriter, r *http.Request) (str
 
 	mvc := &components.TodoMVC{}
 	if entry, err := s.kv.Get(ctx, sessionID); err != nil {
-		if err != jetstream.ErrKeyNotFound {
+		if !errors.Is(err, jetstream.ErrKeyNotFound) {
 			return "", nil, fmt.Errorf("failed to get key value: %w", err)
 		}
 		s.resetMVC(mvc)
